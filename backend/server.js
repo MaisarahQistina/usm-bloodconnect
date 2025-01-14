@@ -13,9 +13,27 @@ app.use(bodyParser.json());
 app.use(cors({
   // origin: "https://bloodconnect.site",
   origin: "http://localhost:3000",
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "DELETE", "PUT"],
   allowedHeaders: ["Content-Type"],
 }));
+
+// Display Event on HomePage
+app.get("/", (req, res) => { 
+  const query = "SELECT * FROM event WHERE eventID = 2 "; // Adjust the table name if necessary
+  
+  db.query(query, (err, eventdata) => {
+    if (err) {
+      console.error("Error querying events:", err);
+      return res.status(500).json({ error: true, message: "Error querying events." });
+    }
+
+    if (eventdata.length === 0) {
+      return res.json({ events: [], message: "No events found." });
+    }
+
+    res.json({ event: eventdata[0] });
+  });
+});
 
 // Sign up with password hashing
 app.post("/sign-up", (req, res) => {
@@ -137,6 +155,38 @@ app.get("/questions", (req, res) => {
   });
 });
 
+// Save questionnaire responses
+app.post('/saveResponses', (req, res) => {
+  const responses = req.body; // Get the array of responses from the frontend
+
+  // Create an array of promises for all database insertions
+  const insertPromises = responses.map((response) => {
+    const { donorID, questionID, answer, eventId } = response;
+
+    return new Promise((resolve, reject) => {
+      const query = 'INSERT INTO questionResponse (donorID, questionID, response, eventID) VALUES (?, ?, ?, ?)';
+
+      db.query(query, [donorID, questionID, answer, eventId], (err, result) => {
+        if (err) {
+          console.error('Error saving response:', err);
+          return reject(err); // Reject the promise on error
+        }
+        console.log(`Response saved for question: ${questionID}`);
+        resolve(result); // Resolve the promise on success
+      });
+    });
+  });
+
+  // Wait for all insertions to complete
+  Promise.all(insertPromises)
+    .then(() => {
+      res.json({ success: true, message: 'All responses saved successfully.' });
+    })
+    .catch((err) => {
+      res.status(500).json({ success: false, message: 'Error saving responses.', error: err });
+    });
+});
+
 // Add New Event Details
 app.post("/admin-event", (req, res) => {
   const { eventName, eventDate, eventLocation, startTime, endTime, status } = req.body;
@@ -221,6 +271,102 @@ app.delete("/admin-event/:id", (req, res) => {
     }
 
     res.status(200).json({ success: true, message: "Event deleted successfully." });
+  });
+});
+
+// Endpoint to get all medical staff
+app.get("/api/admin-medical-staff", (req, res) => {
+  const sql = "SELECT * FROM medicalStaff";
+  db.query(sql, (err, data) => {
+    if (err) {
+      console.error("Error fetching data:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error fetching data." });
+    }
+    res.status(200).json(data);
+  });
+});
+
+/// Endpoint to add medical staff
+app.post("/api/add-medical-staff", (req, res) => {
+  const { name, email, phone, password } = req.body;
+
+  const checkEmailSql = "SELECT * FROM medicalStaff WHERE staffEmail = ?";
+  db.query(checkEmailSql, [email], (err, data) => {
+    if (err) {
+      console.error("Error querying database:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Error checking email.",
+      });
+    }
+    if (data.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "The email address already exists.",
+      });
+    }
+
+    const sql =
+      "INSERT INTO medicalStaff (staffName, staffEmail, staffPhoneNum, staffPassword) VALUES (?, ?, ?, ?)";
+    db.query(sql, [name, email, phone, password], (err, data) => {
+      if (err) {
+        console.error("Error inserting data:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Error adding medical staff to database.",
+          error: err.message,
+        });
+      }
+      console.log("Data inserted successfully:", data);
+      return res.status(200).json({
+        success: true,
+        message: "Medical staff added successfully.",
+      });
+    });
+  });
+});
+
+//Update medical staff
+app.put("/api/update-medical-staff", (req, res) => {
+  const { staffID, staffName, staffEmail, staffPhoneNum, staffPassword } =
+    req.body;
+
+  const sql =
+    "UPDATE medicalStaff SET staffName = ?, staffEmail = ?, staffPhoneNum = ?, staffPassword = ? WHERE staffID = ?";
+  db.query(
+    sql,
+    [staffName, staffEmail, staffPhoneNum, staffPassword, staffID],
+    (err) => {
+      if (err) {
+        console.error("Error updating data:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Error updating medical staff." });
+      }
+      return res.status(200).json({
+        success: true,
+        message: "Medical staff updated successfully.",
+      });
+    }
+  );
+});
+
+//Delete medical staff
+app.delete("/api/delete-medical-staff/:staffID", (req, res) => {
+  const { staffID } = req.params;
+  const sql = "DELETE FROM medicalStaff WHERE staffID = ?";
+  db.query(sql, [staffID], (err, data) => {
+    if (err) {
+      console.error("Error deleting data:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error deleting medical staff." });
+    }
+    return res
+      .status(200)
+      .json({ success: true, message: "Medical staff deleted successfully." });
   });
 });
 

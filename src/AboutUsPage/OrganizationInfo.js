@@ -10,7 +10,7 @@ function OrganizationInfo() {
         className={styles.image}
       />
       <div className={styles.content}>
-        <h2 className={styles.title}>Who Are USSSS</h2>
+        <h2 className={styles.title}>Who are we?</h2>
         <p className={styles.description}>
           <strong>Pusat Sejahtera</strong> (Health & Dental) is the official
           medical establishment of Universiti Sains Malaysia (USM) in Penang and

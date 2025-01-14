@@ -27,7 +27,7 @@ const Hero = ({user}) => {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
   
-    return `${year}-${month}-${day}`;
+    return `${day} / ${month} / ${year}`;
   }
 
   // Function format time
@@ -40,8 +40,6 @@ const Hero = ({user}) => {
       try {
         const response = await fetch("http://localhost:8081/"); // Match your backend endpoint
         const data = await response.json();
-
-        console.log("Fetched event data:", data); 
 
         console.log("Fetched event data:", data); // Log the fetched data
         if (data.event) {
